@@ -43,3 +43,7 @@ amqp.connect(process.env.RABBITMQ_URL, function (error0, connection) {
         });
     }
 });
+
+process.on('uncaughtException', (e) => {
+    console.log(e);
+  });
