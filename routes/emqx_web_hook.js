@@ -14,7 +14,8 @@ router.post("/", function (req, res) {
         case "message_publish":
             messageService.dispatchMessage({
                 topic: req.body.topic,
-                payload: new Buffer(req.body.payload, 'base64'),
+                payload: new Buffer.from(req.body.payload, 'base64'),
+                //payload: req.body.payload, //web_hook插件没有定义base64时使用
                 ts: req.body.ts
             })
     }

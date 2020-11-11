@@ -18,6 +18,15 @@ const influx = new Influx.InfluxDB({
                 count: Influx.FieldType.INTEGER
             },
             tags: ["node_name"]
+        },
+        {
+            measurement: 'upload_data',
+            fields: {
+                payload: Influx.FieldType.FLOAT
+            },
+            tags: [
+                'product_name', 'device_name', 'data_type'
+            ]
         }
     ]
 })
@@ -25,6 +34,8 @@ const influx = new Influx.InfluxDB({
 class InfluxDBService {
     static writeConnectionData({productName, deviceName, connected, ts}) {
         var timestamp = ts == null ? Math.floor(Date.now() / 1000) : ts
+        //web_hook ts 传递过来的是ms =》转换为s
+        //var timestamp = ts == null ? Math.floor(Date.now() / 1000) : Math.floor(ts/1000)
         influx.writePoints([
             {
                 measurement: 'device_connections',
@@ -46,6 +57,22 @@ class InfluxDBService {
                 tags: {node_name: nodeName},
                 fields: {count: count},
                 timestamp: Math.floor(Date.now() / 1000)
+            }
+        ], {
+            precision: 's',
+        }).catch(err => {
+            console.error(`Error saving data to InfluxDB! ${err.stack}`)
+        })
+    }
+
+    static writeUploadData({productName, deviceName, dataType, payload, ts}) {
+        var timestamp = ts == null ? Math.floor(Date.now() / 1000) : ts
+        influx.writePoints([
+            {
+                measurement: 'upload_data',
+                tags: {product_name: productName, device_name: deviceName, data_type: dataType},
+                fields: {payload: new Buffer.from(payload, 'base64')},
+                timestamp: timestamp
             }
         ], {
             precision: 's',

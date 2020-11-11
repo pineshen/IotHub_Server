@@ -4,6 +4,7 @@ const Message = require("../models/message")
 const NotifyService = require("./notify_service")
 const Device = require("../models/device")
 const OTAService = require("../services/ota_service")
+const influxDBService = require("../services/influxdb_service")
 
 class MessageService {
     static checkMessageDuplication(messageId, callback) {
@@ -167,6 +168,14 @@ class MessageService {
             })
             message.save()
             NotifyService.notifyUploadData(message)
+            
+            influxDBService.writeUploadData({
+                productName: productName,
+                deviceName: deviceName,
+                dataType: dataType,
+                payload: payload,
+                ts: ts
+            })
         }
     }
 
