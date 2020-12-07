@@ -5,11 +5,12 @@ var router = express.Router();
 var Connection = require('../models/connection')
 var UtilsService = require('../services/utils_service')
 var DeviceACL = require("../models/device_acl")
+var DeviceBind = require("../models/device_bind")
 
 
 router.post("/", function (req, res) {
     var productName = req.body.product_name
-    var deviceName = shortid.generate();
+    var deviceName = req.body.device_mac
     var secret = shortid.generate();
     var brokerUsername = `${productName}/${deviceName}`
 
@@ -197,6 +198,90 @@ router.put("/:productName/:deviceName/shadow", function (req, res) {
     })
 })
 
+router.post("/:productName/:deviceName/bind", function (req, res) {
+    var productName = req.params.productName
+    var deviceName = req.params.deviceName
+    var alias = req.body.alias
+    var openid = req.body.openid
+
+    DeviceBind.findOne({"product_name": productName, "device_name": deviceName, "openid": openid}).exec(function (err, devicebind) {
+        if (err) {
+            res.send(err)
+        } else {
+            if (devicebind == null) {
+                var devicebind = new DeviceBind({
+                    openid: openid,
+                    product_name: productName,
+                    device_name: deviceName,
+                    device_alias: alias,
+                    bind_at: (new Date()).getTime()
+                })
+                devicebind.save(function (err) {
+                    if (err) {
+                        res.status(500).send(err)
+                    } else {
+                        res.status(200).send("ok")
+                    }
+                })
+            } else {
+                res.status(200).send("ok")
+            }
+        }
+    })
+})
+
+router.delete("/:productName/:deviceName/unbind", function (req, res) {
+    var productName = req.params.productName
+    var deviceName = req.params.deviceName
+    var openid = req.body.openid
+    DeviceBind.find({"product_name": productName, "device_name": deviceName, "openid": openid}).exec(function (err, devicebind) {
+        if (err) {
+            res.send(err)
+        } else {
+            if (devicebind != null) {
+                DeviceBind.deleteMany({"product_name": productName, "device_name": deviceName, "openid": openid}).exec()
+                res.status(200).send("ok")
+            } else {
+                res.status(404).json({error: "Not Found"})
+            }
+        }
+    })
+})
+
+router.post("/:productName/:deviceName/reset", function (req, res) {
+    var productName = req.params.productName
+    var deviceName = req.params.deviceName
+    DeviceBind.find({"product_name": productName, "device_name": deviceName}).exec(function (err, devicebinds) {
+        if (err) {
+            res.send(err)
+        } else {
+            if (devicebinds != null) {
+                DeviceBind.deleteMany({"product_name": productName, "device_name": deviceName}).exec()
+                res.status(200).send("ok")
+            } else {
+                res.status(404).json({error: "Not Found"})
+            }
+        }
+    })
+})
+
+router.get("/:productName/:deviceName/online", function (req, res) {
+    var productName = req.params.productName
+    var deviceName = req.params.deviceName
+    Device.findOne({"product_name": productName, "device_name": deviceName}).exec(function (err, device) {
+        if (err) {
+            res.send(err)
+        } else {
+            if (device != null) {
+                Connection.findOne({device: device._id}, function (_, connection) {
+                    res.json({product_name: productName, device_name: deviceName, online: connection.connected})
+                })
+            } else {
+                res.status(404).json({error: "Not Found"})
+            }
+        }
+    })
+})
 
 
 module.exports = router
